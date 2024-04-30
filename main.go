@@ -33,9 +33,9 @@ func main() {
 		log.Fatal("REPO_NAME is not set")
 	}
 
-	apiKeys := os.Getenv("API_KEYS")
-	if apiKeys == "" {
-		log.Fatal("API_KEYS is not set")
+	apiKey := os.Getenv("API_KEY")
+	if apiKey == "" {
+		log.Fatal("API_KEY is not set")
 	}
 
 	accessToken := os.Getenv("GITHUB_PAT")
@@ -52,7 +52,7 @@ func main() {
 	githubClient := github.NewClient(tc)
 
 	// openai API key
-	openaiClient := openai.NewClient(apiKeys)
+	openaiClient := openai.NewClient(apiKey)
 
 	// Get the latest commit
 	commits, _, err := githubClient.Repositories.ListCommits(ctx, owner, repo, &github.CommitsListOptions{ListOptions: github.ListOptions{PerPage: 1}})
