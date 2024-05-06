@@ -25,6 +25,7 @@ type Handlers struct {
 	logger *log.Logger
 }
 
+// NewHandlers creates a new Handlers object with the provided logger.
 func NewHandlers(logger *log.Logger) *Handlers {
 	return &Handlers{
 		logger: logger,
@@ -98,16 +99,19 @@ func main() {
 	h.printFiles(f, basePath)
 
 	for _, file := range f.Files {
-		githubOpenAI(ctx, file, githubClient, openaiClient, owner, repo, latestCommitSHA)
+		h.githubOpenAI(ctx, file, githubClient, openaiClient, owner, repo, latestCommitSHA)
 	}
 }
 
-func githubOpenAI(ctx context.Context, file string, githubClient *github.Client, openaiClient *openai.Client, owner string, repo string, latestCommitSHA string) {
+// githubOpenAI uses OpenAI's GPT-3.5-turbo model to review the content of a file,
+// and creates a comment on the commit in the GitHub repository.
+func (h *Handlers) githubOpenAI(ctx context.Context, file string, githubClient *github.Client, openaiClient *openai.Client, owner string, repo string, latestCommitSHA string) {
 	content, err := os.ReadFile(file)
 	if err != nil {
-		fmt.Printf("ReadFile error: %v\n", err)
+		h.logger.Printf("ReadFile error: %v\n", err)
 		return
 	}
+
 	resp, err := openaiClient.CreateChatCompletion(
 		context.Background(),
 		openai.ChatCompletionRequest{
@@ -125,7 +129,7 @@ func githubOpenAI(ctx context.Context, file string, githubClient *github.Client,
 	)
 
 	if err != nil {
-		fmt.Printf("ChatCompletion error: %v\n", err)
+		h.logger.Printf("CreateChatCompletion error: %v\n", err)
 		return
 	}
 
@@ -134,6 +138,7 @@ func githubOpenAI(ctx context.Context, file string, githubClient *github.Client,
 	githubClient.Repositories.CreateComment(ctx, owner, repo, latestCommitSHA, &github.RepositoryComment{Body: &comment})
 }
 
+// getContents downloads the content of a file from a GitHub repository and saves it locally.
 func (h *Handlers) getContents(ctx context.Context, client *github.Client, path string, owner string, repo string, branch string, commitSHA string) {
 
 	var opts *github.RepositoryContentGetOptions
@@ -174,6 +179,7 @@ func (h *Handlers) getContents(ctx context.Context, client *github.Client, path 
 	fmt.Println("Downloaded file:", local)
 }
 
+// printFiles recursively scans a directory and appends the paths of all files it contains to f.Files.
 func (h *Handlers) printFiles(f *FilesData, path string) {
 	files, err := os.ReadDir(path)
 	if err != nil {
