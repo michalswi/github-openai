@@ -8,7 +8,10 @@
 
 The Go application utilizes OpenAI's ChatGPT to review all files from the latest commit and subsequently adds comments.  
 
-Examples are [here](https://github.com/michalswi/test/commit/7de43ee5699d9bbb41a83e181e829ab157a7f3a9#comments) or [there](https://github.com/michalswi/test/commit/c5d9951c47bd230b00709ba54aa2adab735c9844#comments).
+Examples:
+- [main](https://github.com/michalswi/github-openai-test/commit/684842f1c83edce4c0f8cd12b545ab8febf97891#comments) branch
+- [develop](https://github.com/michalswi/github-openai-test/commit/3938a0d2482b325df367c824d3ded1bed8c307a9#comments) branch
+- [in progress] [github-actions]() integration
 
 You need:
 - OpenAI API key
