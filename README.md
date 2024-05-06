@@ -4,6 +4,7 @@
 ![](https://img.shields.io/github/issues/michalswi/github-openai)
 ![](https://img.shields.io/github/forks/michalswi/github-openai)
 ![](https://img.shields.io/github/last-commit/michalswi/github-openai)
+![](https://img.shields.io/github/release/michalswi/github-openai)
 
 The Go application utilizes OpenAI's ChatGPT to review all files from the latest commit and subsequently adds comments.  
 
