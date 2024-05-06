@@ -21,26 +21,39 @@ type FilesData struct {
 	Files []string
 }
 
+type Handlers struct {
+	logger *log.Logger
+}
+
+func NewHandlers(logger *log.Logger) *Handlers {
+	return &Handlers{
+		logger: logger,
+	}
+}
+
 func main() {
+
+	logger := log.New(os.Stdout, "gh-oai ", log.LstdFlags|log.Lshortfile|log.Ltime|log.LUTC)
+	h := NewHandlers(logger)
 
 	owner := os.Getenv("REPO_OWNER")
 	if owner == "" {
-		log.Fatal("REPO_OWNER is not set")
+		h.logger.Fatal("REPO_OWNER is not set")
 	}
 
 	repo := os.Getenv("REPO_NAME")
 	if repo == "" {
-		log.Fatal("REPO_NAME is not set")
+		h.logger.Fatal("REPO_NAME is not set")
 	}
 
 	apiKey := os.Getenv("API_KEY")
 	if apiKey == "" {
-		log.Fatal("API_KEY is not set")
+		h.logger.Fatal("API_KEY is not set")
 	}
 
 	accessToken := os.Getenv("GITHUB_PAT")
 	if accessToken == "" {
-		log.Fatal("GITHUB_PAT is not set")
+		h.logger.Fatal("GITHUB_PAT is not set")
 	}
 
 	// github token
@@ -54,28 +67,35 @@ func main() {
 	// openai API key
 	openaiClient := openai.NewClient(apiKey)
 
-	// Get the latest commit
-	commits, _, err := githubClient.Repositories.ListCommits(ctx, owner, repo, &github.CommitsListOptions{ListOptions: github.ListOptions{PerPage: 1}})
-	if err != nil {
-		log.Fatal(err)
+	branch := os.Getenv("BRANCH_NAME")
+	var opts *github.CommitsListOptions
+	if branch == "" {
+		opts = &github.CommitsListOptions{ListOptions: github.ListOptions{PerPage: 1}}
+	} else {
+		opts = &github.CommitsListOptions{SHA: branch, ListOptions: github.ListOptions{PerPage: 1}}
 	}
-	// latestCommit := commits[0]
-	// fmt.Println("latest commit:\n", latestCommit)
+
+	// Get the latest commit
+	commits, _, err := githubClient.Repositories.ListCommits(ctx, owner, repo, opts)
+	if err != nil {
+		h.logger.Fatal(err)
+	}
+	// fmt.Println("latest commit:\n", commits[0])
 	latestCommitSHA := commits[0].GetSHA()
 
 	// Get the commit object, which includes the files
 	commit, _, err := githubClient.Repositories.GetCommit(ctx, owner, repo, latestCommitSHA)
 	if err != nil {
-		log.Fatal(err)
+		h.logger.Fatal(err)
 	}
 
 	for _, file := range commit.Files {
 		// fmt.Println(*file.RawURL)
-		getContents(ctx, githubClient, *file.Filename, latestCommitSHA, owner, repo)
+		h.getContents(ctx, githubClient, *file.Filename, owner, repo, latestCommitSHA, branch)
 	}
 
 	f := &FilesData{}
-	f.printFiles(basePath)
+	h.printFiles(f, basePath)
 
 	for _, file := range f.Files {
 		githubOpenAI(ctx, file, githubClient, openaiClient, owner, repo, latestCommitSHA)
@@ -114,18 +134,25 @@ func githubOpenAI(ctx context.Context, file string, githubClient *github.Client,
 	githubClient.Repositories.CreateComment(ctx, owner, repo, latestCommitSHA, &github.RepositoryComment{Body: &comment})
 }
 
-func getContents(ctx context.Context, client *github.Client, path string, commitSHA string, owner string, repo string) {
+func (h *Handlers) getContents(ctx context.Context, client *github.Client, path string, owner string, repo string, branch string, commitSHA string) {
 
-	opts := &github.RepositoryContentGetOptions{Ref: commitSHA}
+	var opts *github.RepositoryContentGetOptions
+	if branch == "" {
+		opts = &github.RepositoryContentGetOptions{Ref: commitSHA}
+
+	} else {
+		opts = &github.RepositoryContentGetOptions{Ref: branch}
+	}
+
 	rc, err := client.Repositories.DownloadContents(ctx, owner, repo, path, opts)
 	if err != nil {
-		log.Fatal(err)
+		h.logger.Fatal(err)
 	}
 	defer rc.Close()
 
 	body, err := io.ReadAll(rc)
 	if err != nil {
-		log.Fatal(err)
+		h.logger.Fatal(err)
 	}
 
 	local := filepath.Join(basePath, path)
@@ -135,28 +162,29 @@ func getContents(ctx context.Context, client *github.Client, path string, commit
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		err = os.MkdirAll(dir, 0755)
 		if err != nil {
-			log.Fatal(err)
+			h.logger.Fatal(err)
 		}
 	}
 
 	err = os.WriteFile(local, body, 0644)
 	if err != nil {
-		log.Fatal(err)
+		h.logger.Fatal(err)
 	}
 
 	fmt.Println("Downloaded file:", local)
 }
 
-func (f *FilesData) printFiles(path string) {
+func (h *Handlers) printFiles(f *FilesData, path string) {
 	files, err := os.ReadDir(path)
 	if err != nil {
-		log.Fatal(err)
+		h.logger.Printf("Error reading directory %s: %v", path, err)
+		return
 	}
 
 	for _, file := range files {
 		filePath := filepath.Join(path, file.Name())
 		if file.IsDir() {
-			f.printFiles(filePath)
+			h.printFiles(f, filePath)
 		} else {
 			f.Files = append(f.Files, filePath)
 		}
