@@ -37,6 +37,16 @@ func main() {
 	logger := log.New(os.Stdout, "gh-oai ", log.LstdFlags|log.Lshortfile|log.Ltime|log.LUTC)
 	h := NewHandlers(logger)
 
+	apiKey := os.Getenv("API_KEY")
+	if apiKey == "" {
+		h.logger.Fatal("API_KEY is not set")
+	}
+
+	accessToken := os.Getenv("GITHUB_PAT")
+	if accessToken == "" {
+		h.logger.Fatal("GITHUB_PAT is not set")
+	}
+
 	owner := os.Getenv("REPO_OWNER")
 	if owner == "" {
 		h.logger.Fatal("REPO_OWNER is not set")
@@ -47,14 +57,12 @@ func main() {
 		h.logger.Fatal("REPO_NAME is not set")
 	}
 
-	apiKey := os.Getenv("API_KEY")
-	if apiKey == "" {
-		h.logger.Fatal("API_KEY is not set")
-	}
-
-	accessToken := os.Getenv("GITHUB_PAT")
-	if accessToken == "" {
-		h.logger.Fatal("GITHUB_PAT is not set")
+	branch := os.Getenv("BRANCH_NAME")
+	var opts *github.CommitsListOptions
+	if branch == "" {
+		opts = &github.CommitsListOptions{ListOptions: github.ListOptions{PerPage: 1}}
+	} else {
+		opts = &github.CommitsListOptions{SHA: branch, ListOptions: github.ListOptions{PerPage: 1}}
 	}
 
 	// github token
@@ -67,14 +75,6 @@ func main() {
 
 	// openai API key
 	openaiClient := openai.NewClient(apiKey)
-
-	branch := os.Getenv("BRANCH_NAME")
-	var opts *github.CommitsListOptions
-	if branch == "" {
-		opts = &github.CommitsListOptions{ListOptions: github.ListOptions{PerPage: 1}}
-	} else {
-		opts = &github.CommitsListOptions{SHA: branch, ListOptions: github.ListOptions{PerPage: 1}}
-	}
 
 	// Get the latest commit
 	commits, _, err := githubClient.Repositories.ListCommits(ctx, owner, repo, opts)

@@ -1,4 +1,4 @@
-# [in progress]
+# github-openai
 
 ![](https://img.shields.io/github/stars/michalswi/github-openai)
 ![](https://img.shields.io/github/issues/michalswi/github-openai)
@@ -24,6 +24,3 @@ export BRANCH_NAME=develop
 
 go run main.go
 ```
-
-#### todo
-- docker image that you add to your github actions workflow to review the latest commit automatically

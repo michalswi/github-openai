@@ -1,1 +1,5 @@
 __*
+*.txt
+*.dat
+github-openai*
+*.sha256
