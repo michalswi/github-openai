@@ -5,16 +5,15 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/google/go-github/github"
 	"github.com/sashabaranov/go-openai"
 	"golang.org/x/oauth2"
-)
-
-const (
-	basePath = "/tmp/temp" // local directory for storing repo files
 )
 
 type FilesData struct {
@@ -31,6 +30,9 @@ func NewHandlers(logger *log.Logger) *Handlers {
 		logger: logger,
 	}
 }
+
+const charset = "abcdefghijklmnopqrstuvwxyz" +
+	"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 func main() {
 
@@ -65,6 +67,9 @@ func main() {
 		opts = &github.CommitsListOptions{SHA: branch, ListOptions: github.ListOptions{PerPage: 1}}
 	}
 
+	// local directory for storing repo files
+	basePath := "/tmp/temp-" + genID(5)
+
 	// github token
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(
@@ -92,25 +97,32 @@ func main() {
 
 	for _, file := range commit.Files {
 		// fmt.Println(*file.RawURL)
-		h.getContents(ctx, githubClient, *file.Filename, owner, repo, latestCommitSHA, branch)
+		h.getContents(ctx, githubClient, *file.Filename, owner, repo, latestCommitSHA, branch, basePath)
 	}
 
 	f := &FilesData{}
 	h.printFiles(f, basePath)
 
 	for _, file := range f.Files {
-		h.githubOpenAI(ctx, file, githubClient, openaiClient, owner, repo, latestCommitSHA)
+		h.githubOpenAI(ctx, file, githubClient, openaiClient, owner, repo, latestCommitSHA, basePath)
 	}
+
+	// clean up
+	defer os.RemoveAll(basePath)
 }
 
 // githubOpenAI uses OpenAI's GPT-3.5-turbo model to review the content of a file,
 // and creates a comment on the commit in the GitHub repository.
-func (h *Handlers) githubOpenAI(ctx context.Context, file string, githubClient *github.Client, openaiClient *openai.Client, owner string, repo string, latestCommitSHA string) {
+func (h *Handlers) githubOpenAI(ctx context.Context, file string, githubClient *github.Client, openaiClient *openai.Client, owner string, repo string, latestCommitSHA string, basePath string) {
+
 	content, err := os.ReadFile(file)
 	if err != nil {
 		h.logger.Printf("ReadFile error: %v\n", err)
 		return
 	}
+
+	// display only file name in commit from repo not full path
+	repoFile := strings.ReplaceAll(file, basePath+"/", "")
 
 	resp, err := openaiClient.CreateChatCompletion(
 		context.Background(),
@@ -133,13 +145,13 @@ func (h *Handlers) githubOpenAI(ctx context.Context, file string, githubClient *
 		return
 	}
 
-	comment := fmt.Sprintf("ChatGPT's review about `%s` file:\n %s", file, resp.Choices[0].Message.Content)
+	comment := fmt.Sprintf("ChatGPT's review about `%s` file:\n %s", repoFile, resp.Choices[0].Message.Content)
 	fmt.Println(comment)
 	githubClient.Repositories.CreateComment(ctx, owner, repo, latestCommitSHA, &github.RepositoryComment{Body: &comment})
 }
 
 // getContents downloads the content of a file from a GitHub repository and saves it locally.
-func (h *Handlers) getContents(ctx context.Context, client *github.Client, path string, owner string, repo string, branch string, commitSHA string) {
+func (h *Handlers) getContents(ctx context.Context, client *github.Client, filename string, owner string, repo string, branch string, commitSHA string, basePath string) {
 
 	var opts *github.RepositoryContentGetOptions
 	if branch == "" {
@@ -149,7 +161,7 @@ func (h *Handlers) getContents(ctx context.Context, client *github.Client, path 
 		opts = &github.RepositoryContentGetOptions{Ref: branch}
 	}
 
-	rc, err := client.Repositories.DownloadContents(ctx, owner, repo, path, opts)
+	rc, err := client.Repositories.DownloadContents(ctx, owner, repo, filename, opts)
 	if err != nil {
 		h.logger.Fatal(err)
 	}
@@ -160,7 +172,7 @@ func (h *Handlers) getContents(ctx context.Context, client *github.Client, path 
 		h.logger.Fatal(err)
 	}
 
-	local := filepath.Join(basePath, path)
+	local := filepath.Join(basePath, filename)
 
 	// Create the directory if it does not exist
 	dir := filepath.Dir(local)
@@ -195,4 +207,20 @@ func (h *Handlers) printFiles(f *FilesData, path string) {
 			f.Files = append(f.Files, filePath)
 		}
 	}
+}
+
+// stringWithCharset generates a random string of a given length using characters from a given charset.
+func stringWithCharset(length int, charset string, r *rand.Rand) string {
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[r.Intn(len(charset))]
+	}
+	return string(b)
+}
+
+// genID generates a random ID of a given length.
+func genID(length int) string {
+	s := rand.NewSource(time.Now().UnixNano())
+	r := rand.New(s)
+	return stringWithCharset(length, charset, r)
 }

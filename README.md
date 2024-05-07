@@ -25,6 +25,4 @@ export REPO_NAME=<repo_name>
 
 # [optional] if branch different than the default one (main)
 export BRANCH_NAME=develop
-
-go run main.go
 ```
