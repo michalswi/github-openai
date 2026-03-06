@@ -12,8 +12,15 @@ import (
 	"time"
 
 	"github.com/google/go-github/github"
-	"github.com/sashabaranov/go-openai"
+	openai "github.com/sashabaranov/go-openai"
 	"golang.org/x/oauth2"
+)
+
+const (
+	// https://pkg.go.dev/github.com/sashabaranov/go-openai#pkg-constants
+	openaiModel = openai.GPT5
+	charset     = "abcdefghijklmnopqrstuvwxyz" +
+		"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 )
 
 type FilesData struct {
@@ -30,9 +37,6 @@ func NewHandlers(logger *log.Logger) *Handlers {
 		logger: logger,
 	}
 }
-
-const charset = "abcdefghijklmnopqrstuvwxyz" +
-	"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 func main() {
 
@@ -111,7 +115,7 @@ func main() {
 	defer os.RemoveAll(basePath)
 }
 
-// githubOpenAI uses OpenAI's GPT-3.5-turbo model to review the content of a file,
+// githubOpenAI uses OpenAI's GPT model to review the content of a file,
 // and creates a comment on the commit in the GitHub repository.
 func (h *Handlers) githubOpenAI(ctx context.Context, file string, githubClient *github.Client, openaiClient *openai.Client, owner string, repo string, latestCommitSHA string, basePath string) {
 
@@ -127,8 +131,7 @@ func (h *Handlers) githubOpenAI(ctx context.Context, file string, githubClient *
 	resp, err := openaiClient.CreateChatCompletion(
 		context.Background(),
 		openai.ChatCompletionRequest{
-			// gpt-3.5-turbo
-			Model: openai.GPT3Dot5Turbo,
+			Model: openaiModel,
 			Messages: []openai.ChatCompletionMessage{
 				{
 					Role: openai.ChatMessageRoleUser,

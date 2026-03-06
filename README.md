@@ -1,12 +1,13 @@
+<div align="center">
+
 # github-openai
 
-![](https://img.shields.io/github/stars/michalswi/github-openai)
-![](https://img.shields.io/github/issues/michalswi/github-openai)
-![](https://img.shields.io/github/forks/michalswi/github-openai)
-![](https://img.shields.io/github/last-commit/michalswi/github-openai)
-![](https://img.shields.io/github/release/michalswi/github-openai)
+[![stars](https://img.shields.io/github/stars/michalswi/github-openai?style=for-the-badge&color=353535)](https://github.com/michalswi/github-openai)
+[![forks](https://img.shields.io/github/forks/michalswi/github-openai?style=for-the-badge&color=353535)](https://github.com/michalswi/github-openai/fork)
+[![releases](https://img.shields.io/github/v/release/michalswi/github-openai?style=for-the-badge&color=353535)](https://github.com/michalswi/github-openai/releases)
 
-The Go application utilizes OpenAI's ChatGPT to review all files from the latest commit and subsequently adds comments.  
+the Go application utilizes OpenAI's ChatGPT to review all files from the latest commit and subsequently adds comments.
+</div>
 
 Examples:
 - [main](https://github.com/michalswi/github-openai-test/commit/684842f1c83edce4c0f8cd12b545ab8febf97891#comments) branch
