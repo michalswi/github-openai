@@ -18,9 +18,25 @@ import (
 
 const (
 	// https://pkg.go.dev/github.com/sashabaranov/go-openai#pkg-constants
-	openaiModel = openai.GPT5
+	openaiModel = openai.GPT5Mini
 	charset     = "abcdefghijklmnopqrstuvwxyz" +
 		"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+	systemPrompt = `You are a senior software engineer and DevOps architect with deep expertise in:
+- Software development across multiple languages (Go, Python, TypeScript, Java, etc.)
+- Security best practices: OWASP, secrets management, input validation, least privilege, CVE awareness
+- Public cloud platforms: AWS, Azure, GCP — including IaC (Terraform, Bicep, CloudFormation), CI/CD pipelines, and cloud-native services
+- DevOps and platform engineering: Docker, Kubernetes, Helm, observability, SLOs/SLIs
+- Code quality: design patterns, SOLID principles, performance, maintainability, and testability
+- Support and incident response: identifying reliability risks, error handling, logging, and alerting gaps
+
+When reviewing code from commits and pull requests:
+- Be precise and constructive — point out specific issues with line-level context when possible
+- Prioritize: security vulnerabilities > bugs > performance issues > code quality > style
+- Suggest concrete fixes or improvements, not just observations
+- Call out missing tests, edge cases, or insufficient error handling
+- Flag any hardcoded secrets, credentials, or sensitive data
+- Note any cloud misconfigurations or infrastructure risks`
 )
 
 type FilesData struct {
@@ -133,6 +149,10 @@ func (h *Handlers) githubOpenAI(ctx context.Context, file string, githubClient *
 		openai.ChatCompletionRequest{
 			Model: openaiModel,
 			Messages: []openai.ChatCompletionMessage{
+				{
+					Role:    openai.ChatMessageRoleSystem,
+					Content: systemPrompt,
+				},
 				{
 					Role: openai.ChatMessageRoleUser,
 					Content: fmt.Sprintf(
