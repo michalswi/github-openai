@@ -12,8 +12,31 @@ import (
 	"time"
 
 	"github.com/google/go-github/github"
-	"github.com/sashabaranov/go-openai"
+	openai "github.com/sashabaranov/go-openai"
 	"golang.org/x/oauth2"
+)
+
+const (
+	// https://pkg.go.dev/github.com/sashabaranov/go-openai#pkg-constants
+	openaiModel = openai.GPT5Mini
+	charset     = "abcdefghijklmnopqrstuvwxyz" +
+		"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+	systemPrompt = `You are a senior software engineer and DevOps architect with deep expertise in:
+- Software development across multiple languages (Go, Python, TypeScript, Java, etc.)
+- Security best practices: OWASP, secrets management, input validation, least privilege, CVE awareness
+- Public cloud platforms: AWS, Azure, GCP — including IaC (Terraform, Bicep, CloudFormation), CI/CD pipelines, and cloud-native services
+- DevOps and platform engineering: Docker, Kubernetes, Helm, observability, SLOs/SLIs
+- Code quality: design patterns, SOLID principles, performance, maintainability, and testability
+- Support and incident response: identifying reliability risks, error handling, logging, and alerting gaps
+
+When reviewing code from commits and pull requests:
+- Be precise and constructive — point out specific issues with line-level context when possible
+- Prioritize: security vulnerabilities > bugs > performance issues > code quality > style
+- Suggest concrete fixes or improvements, not just observations
+- Call out missing tests, edge cases, or insufficient error handling
+- Flag any hardcoded secrets, credentials, or sensitive data
+- Note any cloud misconfigurations or infrastructure risks`
 )
 
 type FilesData struct {
@@ -30,9 +53,6 @@ func NewHandlers(logger *log.Logger) *Handlers {
 		logger: logger,
 	}
 }
-
-const charset = "abcdefghijklmnopqrstuvwxyz" +
-	"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 func main() {
 
@@ -111,7 +131,7 @@ func main() {
 	defer os.RemoveAll(basePath)
 }
 
-// githubOpenAI uses OpenAI's GPT-3.5-turbo model to review the content of a file,
+// githubOpenAI uses OpenAI's GPT model to review the content of a file,
 // and creates a comment on the commit in the GitHub repository.
 func (h *Handlers) githubOpenAI(ctx context.Context, file string, githubClient *github.Client, openaiClient *openai.Client, owner string, repo string, latestCommitSHA string, basePath string) {
 
@@ -127,9 +147,12 @@ func (h *Handlers) githubOpenAI(ctx context.Context, file string, githubClient *
 	resp, err := openaiClient.CreateChatCompletion(
 		context.Background(),
 		openai.ChatCompletionRequest{
-			// gpt-3.5-turbo
-			Model: openai.GPT3Dot5Turbo,
+			Model: openaiModel,
 			Messages: []openai.ChatCompletionMessage{
+				{
+					Role:    openai.ChatMessageRoleSystem,
+					Content: systemPrompt,
+				},
 				{
 					Role: openai.ChatMessageRoleUser,
 					Content: fmt.Sprintf(
