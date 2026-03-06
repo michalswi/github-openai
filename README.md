@@ -16,7 +16,7 @@ the Go application utilizes OpenAI's ChatGPT (default **gpt-5-mini**) to review 
 
 ### \# examples
 
-#### local code analysis example
+#### **local code** review
 
 ```
 export API_KEY=<> &&\
@@ -38,7 +38,9 @@ ChatGPT's review about `main.go` file:
 ```
 
 
-#### GitHub Actions workflow example
+#### **commit** review using GitHub Actions workflow
+
+GitHub Actions example using workflow you can find [here](https://github.com/michalswi/github-openai-test/commit/7b077c4e610bdcfa70ce44bda1facf93f5e95548) .
 
 ```
 name: github-openai
